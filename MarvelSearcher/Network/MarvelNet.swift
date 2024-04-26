@@ -11,7 +11,7 @@ import CommonCrypto
 class MarvelNet {
     var searchTask: URLSessionDataTask?
     let session = URLSession.shared
-    var count = 0
+    var pageCount = 0
     
     //MARK: - func
     
@@ -37,15 +37,14 @@ class MarvelNet {
         if let name = name, !name.isEmpty {
             parameters += "&name=\(name)"
         }
-        parameters += "&limit=10&offset=\(10*count)"
+        parameters += "&limit=10&offset=\(10 * pageCount)"
         
         let auth = "&apikey=\(publicKey)&hash=\(hash)"
         let url =  mainUrl + parameters + auth
         return url
     }
     
-    func getMarvelInfo(name: String, completion: @escaping ([HeroDisplayInfo]) -> Void) {
-        
+    func getMarvelInfo(name: String, completion: @escaping ([IndexPath]?) -> Void) {
         searchTask?.cancel()
         
         let workItem = DispatchWorkItem {
@@ -68,9 +67,16 @@ class MarvelNet {
                     let heroData = try JSONDecoder().decode(HeroData.self, from: data)
                     let displayInfos = heroData.data.results.map { $0.toDisplayInfo() }
                     
-                    completion(displayInfos)
+                    let existingCount = MarvelData.shared.heroInfo.count
+                    MarvelData.shared.heroInfo.append(contentsOf: displayInfos)
+                    let newCount = MarvelData.shared.heroInfo.count
+     
+                    let indexPaths = (existingCount..<newCount).map { IndexPath(row: $0, section: 0) }
+                    completion(indexPaths)
+                    
                 } catch {
                     print("Error decoding data: \(error)")
+                    completion(nil)
                 }
             }
             
