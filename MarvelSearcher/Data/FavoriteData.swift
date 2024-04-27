@@ -7,4 +7,25 @@
 
 import Foundation
 
-fave
+class FavoriteData {
+    static let shared = FavoriteData()
+    
+    let favoriteKey = "favorite"
+    
+    //MARK: - Function
+    
+    func saveFavorite(favorite: [HeroDisplayInfo]) {
+        if let encoded = try? JSONEncoder().encode(favorite) {
+            UserDefaults.standard.set(encoded, forKey: favoriteKey)
+        }
+    }
+    
+    func loadFavorite() -> [HeroDisplayInfo] {
+        if let savedFavorite = UserDefaults.standard.object(forKey: favoriteKey) as? Data {
+            if let loadedFavorites = try? JSONDecoder().decode([HeroDisplayInfo].self, from: savedFavorite) {
+                return loadedFavorites
+            }
+        }
+        return []
+    }
+}

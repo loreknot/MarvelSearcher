@@ -17,14 +17,13 @@ class SearchViewController: UIViewController {
     
     var activityIndicator: UIActivityIndicatorView!
     var footerActivityIndicator: UIActivityIndicatorView!
-
-    var isLoadingData = false
-    var isRefreshing = false
+    
+    var isLoading = false
     
     // MARK: - IBOutlet
     
     @IBOutlet weak var heroCollectionView: UICollectionView!
-
+    @IBOutlet weak var searchBar: UISearchBar!
     
     // MARK: - ViewCycle
     
@@ -33,54 +32,97 @@ class SearchViewController: UIViewController {
         
         heroCollectionView.register(UICollectionReusableView.self, forSupplementaryViewOfKind: UICollectionView.elementKindSectionFooter, withReuseIdentifier: "footer")
         
-        setActivityIndicator()
-        setFooterActivityIndicator()
-        setBindings()
-        initHeroData()
-    }
-    
-    // MARK: - fucn
-    
-    func initHeroData() {
-        if isLoadingData { return }
-        isLoadingData = true
-        isRefreshing = true
+        setIndicator()
+        setBinding()
         
-        marvelData.getMarvelInfo(name: "") { indexPaths in
-            DispatchQueue.main.async {
-                self.activityIndicator.stopAnimating()
-                self.isLoadingData = false
-                self.isRefreshing = false
-                self.heroCollectionView.reloadData()
-            }
-        }
+        marvelData.getMarvelInfo(name: "")
     }
     
-    func setActivityIndicator() {
+    // MARK: - Function
+    
+    func setIndicator() {
         activityIndicator = UIActivityIndicatorView(style: .large)
         activityIndicator.center = self.view.center
         activityIndicator.hidesWhenStopped = true
         view.addSubview(activityIndicator)
         activityIndicator.startAnimating()
+        
+        footerActivityIndicator = UIActivityIndicatorView(style: .medium)
+        footerActivityIndicator.frame = CGRect(x: 0, y: 0, width: heroCollectionView.bounds.width, height: 50)
+        footerActivityIndicator.hidesWhenStopped = true
     }
     
-    func setFooterActivityIndicator() {
-         footerActivityIndicator = UIActivityIndicatorView(style: .medium)
-         footerActivityIndicator.frame = CGRect(x: 0, y: 0, width: heroCollectionView.bounds.width, height: 50)
-         footerActivityIndicator.hidesWhenStopped = true
-     }
-    
-    func setBindings() {
-        marvelData.isLoading = { [weak self] loading in
+    func setBinding() {
+        
+        marvelData.isLoading = { (loading) in
             DispatchQueue.main.async {
                 if loading {
-                    self?.activityIndicator.startAnimating()
+                    self.activityIndicator.startAnimating()
                 } else {
-                    self?.activityIndicator.stopAnimating()
+                    self.activityIndicator.stopAnimating()
+                    self.heroCollectionView.reloadData()
+                    
+                    guard !self.marvelData.heroInfo.isEmpty else { return }
+                    let indexPath = IndexPath(item: 0, section: 0)
+                    self.heroCollectionView.scrollToItem(at: indexPath, at: .top, animated: false)
+                }
+            }
+        }
+        
+        marvelData.isMoreData = { (isMoreData) in
+            DispatchQueue.main.async {
+                if isMoreData {
+                    self.isLoading = true
+                    self.footerActivityIndicator.startAnimating()
+                } else {
+                    self.footerActivityIndicator.stopAnimating()
+                    self.isLoading = false
+                    if let indexPath = self.marvelData.newIndexPath, !indexPath.isEmpty  {
+                        self.heroCollectionView.insertItems(at: indexPath)
+                    }
+                }
+            }
+        }
+        
+        marvelData.updateCellUI = { (indexPath) in
+            DispatchQueue.main.async {
+                let visibleIndexPath = self.heroCollectionView.indexPathsForVisibleItems
+                
+                if visibleIndexPath.contains(indexPath) {
+                    self.heroCollectionView.reloadItems(at: [indexPath])
                 }
             }
         }
     }
+    
+    func updateFavoriteData(info: HeroDisplayInfo) {
+        var favorite = FavoriteData.shared.loadFavorite()
+        if let index = favorite.firstIndex(where: { $0.name == info.name }) {
+            favorite.remove(at: index)
+        } else {
+            favorite.append(info)
+            if favorite.count > 5 {
+                
+                if let name = favorite.first?.name {
+                    MarvelData.shared.checkRemoveFavorite(name: name)
+                }
+                favorite.removeFirst()
+            }
+        }
+        FavoriteData.shared.saveFavorite(favorite: favorite)
+    }
+}
+
+// MARK: - SearchView
+extension SearchViewController: UISearchBarDelegate {
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        guard let name = searchBar.text, name.count > 1, name != marvelData.currentHeroName else { return }
+        marvelData.getMarvelInfo(name: name)
+    }
+    
+    func dismissKeyboard() {
+          searchBar.resignFirstResponder()
+      }
 }
 
 // MARK: - CollectionView
@@ -100,6 +142,9 @@ extension SearchViewController:  UICollectionViewDataSource, UICollectionViewDel
     }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        let cell = collectionView.cellForItem(at: indexPath)
+        marvelData.updateFavoriteState(index: indexPath.row)
+        updateFavoriteData(info: marvelData.heroInfo[indexPath.row])
     }
     
     func collectionView(_ collectionView: UICollectionView, viewForSupplementaryElementOfKind kind: String, at indexPath: IndexPath) -> UICollectionReusableView {
@@ -107,7 +152,6 @@ extension SearchViewController:  UICollectionViewDataSource, UICollectionViewDel
             let footer = collectionView.dequeueReusableSupplementaryView(ofKind: kind, withReuseIdentifier: "footer", for: indexPath)
             footer.addSubview(footerActivityIndicator)
             footerActivityIndicator.center = CGPoint(x: footer.bounds.midX, y: footer.bounds.midY)
-            footerActivityIndicator.isHidden = !isLoadingData || isRefreshing
             return footer
         }
         return UICollectionReusableView()
@@ -144,39 +188,21 @@ extension SearchViewController:  UICollectionViewDataSource, UICollectionViewDel
 }
 
 
+// MARK: - Scroll
 extension SearchViewController: UIScrollViewDelegate {
     
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
         let offsetY = scrollView.contentOffset.y
         let contentHeight = scrollView.contentSize.height
         let height = scrollView.frame.height
-        activityIndicator.isHidden = true
-        // 하단에 거의 도달했는지 확인
-        if offsetY > contentHeight - height - 100 {
-            loadMoreData()
+        
+        if offsetY > contentHeight - height - 100 && scrollView.isDragging {
+            guard !isLoading else { return }
+            marvelData.loadMoreMarvelInfo()
         }
     }
-    
-    func loadMoreData() {
-            if isLoadingData { return }
-            
-            isLoadingData = true
-            DispatchQueue.main.async {
-                if !self.isRefreshing {
-                    self.footerActivityIndicator.startAnimating()
-                }
-            }
-
-            marvelData.getMarvelInfo(name: marvelData.heroName) { indexPaths in
-                DispatchQueue.main.async {
-                    self.footerActivityIndicator.stopAnimating()
-                    if let indexPaths = indexPaths {
-                        self.heroCollectionView.insertItems(at: indexPaths)
-                    }
-                    self.isLoadingData = false
-                }
-            }
-        }
 }
+
+
 
 

@@ -148,8 +148,8 @@
 		AEFC75D32BDBC81B00B9B46C /* Network */ = {
 			isa = PBXGroup;
 			children = (
-				AEFC75E72BDBC8DB00B9B46C /* MarvelModel.swift */,
 				AEFC75E82BDBC8DB00B9B46C /* MarvelNet.swift */,
+				AEFC75E72BDBC8DB00B9B46C /* MarvelModel.swift */,
 			);
 			path = Network;
 			sourceTree = "<group>";

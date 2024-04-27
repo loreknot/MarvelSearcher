@@ -8,37 +8,59 @@
 import Foundation
 
 class MarvelData {
-    private init() {}
-    
+
     static var shared = MarvelData()
     let marvelNet = MarvelNet()
     
     var heroInfo: [HeroDisplayInfo] = []
+    var currentHeroName = ""
+    var newIndexPath: [IndexPath]?
     
-    var heroName = ""
     var isLoading: ((Bool) -> Void)?
-    var reloadData: (([HeroDisplayInfo]) -> Void)?
+    var isMoreData: ((Bool) -> Void)?
+    var updateCellUI: ((IndexPath) -> Void)?
     
     var numberOfSections: Int {
         return self.heroInfo.count
     }
     
-    // MARK: - func
-    func getMarvelInfo(name: String, completion: @escaping ([IndexPath]?) -> Void) {
+   
+    
+    // MARK: - Function
+    func getMarvelInfo(name: String) {
         isLoading?(true)
+        marvelNet.pageCount = 0
+        heroInfo.removeAll()
         
-        if heroName != name {
-            marvelNet.pageCount = 0
-        } else {
-            marvelNet.pageCount += 1
-        }
-        
-        marvelNet.getMarvelInfo(name: name) { (indexPath) in
+        marvelNet.getMarvelInfo(name: name) { _ in
             self.isLoading?(false)
-            completion(indexPath)
         }
     }
     
+    func loadMoreMarvelInfo() {
+        marvelNet.pageCount += 1
+        isMoreData?(true)
+        marvelNet.getMarvelInfo(name: currentHeroName) { (indexPath) in
+            self.isMoreData?(false)
+            self.newIndexPath = indexPath
+        }
+    }
+    
+    func updateFavoriteState(index: Int) {
+         guard heroInfo.indices.contains(index) else { return }
+         heroInfo[index].favorite.toggle()
+        
+         updateCellUI?(IndexPath(row: index, section: 0))
+     }
+    
+    
+    func checkRemoveFavorite(name: String) {
+        if let index = heroInfo.firstIndex(where: { $0.name == name }) {
+            heroInfo[index].favorite = false
+            
+            updateCellUI?( IndexPath(row: index, section: 0))
+        }
+    }
     
    
 }

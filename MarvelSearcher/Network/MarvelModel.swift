@@ -40,8 +40,9 @@ struct HeroThumbnail: Codable {
     }
 }
 
-struct HeroDisplayInfo {
+struct HeroDisplayInfo: Codable {
     var imageUrl: String?
     var name: String?
     var description: String?
+    var favorite: Bool = false
 }
