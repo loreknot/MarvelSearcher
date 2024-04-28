@@ -18,6 +18,11 @@ class HeroCell: UICollectionViewCell {
         setBorders()
     }
     
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        imageView.image = nil
+    }
+    
     func setBorders() {
         self.layer.cornerRadius = 10
         self.layer.borderColor = UIColor.gray.cgColor
@@ -30,20 +35,32 @@ class HeroCell: UICollectionViewCell {
         loadImage(from: url)
         nameLabel.text = info.name
         descLabel.text = info.description
+        backgroundColor = info.favorite ? .gray : .white
     }
     
     func loadImage(from urlString: String) {
-         guard let url = URL(string: urlString) else { return }
+        guard let url = URL(string: urlString) else { return }
+            self.downloadImage(url: url) { [weak self] image in
+                self?.imageView.image = image
+            }
+    }
+    
+    func downloadImage(url: URL, completion: @escaping (UIImage?) -> Void) {
+        let task = URLSession.shared.dataTask(with: url) { data, response, error in
+            guard let data = data, error == nil else {
+                completion(nil)
+                return
+            }
 
-         let task = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
-             guard let data = data, error == nil else {
-                 print("Error downloading image: \(error?.localizedDescription ?? "No error")")
-                 return
-             }
-             DispatchQueue.main.async {
-                 self?.imageView.image = UIImage(data: data)
-             }
-         }
-         task.resume()
-     }
+            DispatchQueue.global(qos: .userInitiated).async {
+                let image = UIImage(data: data)
+                
+                DispatchQueue.main.async {
+                    completion(image)
+                }
+            }
+        }
+        task.resume()
+    }
+    
 }

@@ -11,9 +11,9 @@ import CommonCrypto
 class MarvelNet {
     var searchTask: URLSessionDataTask?
     let session = URLSession.shared
-    var count = 0
+    var pageCount = 0
     
-    //MARK: - func
+    // MARK: - Function
     
     func md5(_ string: String) -> String {
         let data = Data(string.utf8)
@@ -35,21 +35,21 @@ class MarvelNet {
         var parameters = "characters?ts=\(ts)"
         
         if let name = name, !name.isEmpty {
-            parameters += "&name=\(name)"
+            parameters += "&nameStartsWith=\(name)"
         }
-        parameters += "&limit=10&offset=\(10*count)"
+        
+        parameters += "&limit=10&offset=\(10 * pageCount)"
         
         let auth = "&apikey=\(publicKey)&hash=\(hash)"
         let url =  mainUrl + parameters + auth
         return url
     }
     
-    func getMarvelInfo(name: String, completion: @escaping ([HeroDisplayInfo]) -> Void) {
-        
+    func getMarvelInfo(name: String, completion: @escaping ([IndexPath]?) -> Void) {
         searchTask?.cancel()
         
         let workItem = DispatchWorkItem {
-            
+           
             let url = self.makeRequestUrl(name: name)
             guard let url = URL(string: url) else { return }
             
@@ -66,17 +66,36 @@ class MarvelNet {
                 
                 do {
                     let heroData = try JSONDecoder().decode(HeroData.self, from: data)
-                    let displayInfos = heroData.data.results.map { $0.toDisplayInfo() }
+                    var displayInfo = heroData.data.results.map { $0.toDisplayInfo() }
+                    self.updateFavorite(displayInfo: &displayInfo)
+                 
+                    let existingCount = MarvelData.shared.heroInfo.count
+                    MarvelData.shared.heroInfo.append(contentsOf: displayInfo)
+                    let newCount = MarvelData.shared.heroInfo.count
                     
-                    completion(displayInfos)
+                    let indexPaths = (existingCount..<newCount).map { IndexPath(row: $0, section: 0) }
+                    completion(indexPaths)
+                    
                 } catch {
                     print("Error decoding data: \(error)")
+                    completion(nil)
                 }
             }
             
             self.searchTask?.resume()
         }
         DispatchQueue.global().asyncAfter(deadline: .now() + 0.3, execute: workItem)
+    }
+    
+    func updateFavorite(displayInfo: inout [HeroDisplayInfo]) {
+        let favorite = FavoriteData.shared.loadFavorite()
+        let favoriteName = favorite.compactMap { $0.name }
+        
+        displayInfo.indices.forEach { index in
+            if let name = displayInfo[index].name, favoriteName.contains(name) {
+                displayInfo[index].favorite = true
+            }
+        }
     }
     
     func prettyPrintJSON(data: Data) {
