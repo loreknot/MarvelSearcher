@@ -24,12 +24,11 @@ class MarvelData {
         return self.heroInfo.count
     }
     
-   
-    
     // MARK: - Function
     func getMarvelInfo(name: String) {
         isLoading?(true)
         marvelNet.pageCount = 0
+        currentHeroName = name
         heroInfo.removeAll()
         
         marvelNet.getMarvelInfo(name: name) { _ in

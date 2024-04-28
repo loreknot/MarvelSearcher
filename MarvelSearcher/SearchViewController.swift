@@ -1,15 +1,9 @@
-//
-//  ViewController.swift
-//  MarvelSearcher
-//
-//  Created by subError on 4/25/24.
-//
-
 import UIKit
 
 class SearchViewController: UIViewController {
 
     let marvelData = MarvelData.shared
+    let faveData = FavoriteData.shared
     
     let sectionInsets = UIEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
     let minimumCellSpacing: CGFloat = 20
@@ -24,6 +18,7 @@ class SearchViewController: UIViewController {
     
     @IBOutlet weak var heroCollectionView: UICollectionView!
     @IBOutlet weak var searchBar: UISearchBar!
+    @IBOutlet weak var emptyLabel: UILabel!
     
     // MARK: - ViewCycle
     
@@ -58,6 +53,7 @@ class SearchViewController: UIViewController {
             DispatchQueue.main.async {
                 if loading {
                     self.activityIndicator.startAnimating()
+                    self.emptyLabel.isHidden = true
                 } else {
                     self.activityIndicator.stopAnimating()
                     self.heroCollectionView.reloadData()
@@ -86,36 +82,16 @@ class SearchViewController: UIViewController {
         
         marvelData.updateCellUI = { (indexPath) in
             DispatchQueue.main.async {
-                let visibleIndexPath = self.heroCollectionView.indexPathsForVisibleItems
-                
-                if visibleIndexPath.contains(indexPath) {
-                    self.heroCollectionView.reloadItems(at: [indexPath])
-                }
+                self.heroCollectionView.reloadItems(at: [indexPath])
             }
         }
-    }
-    
-    func updateFavoriteData(info: HeroDisplayInfo) {
-        var favorite = FavoriteData.shared.loadFavorite()
-        if let index = favorite.firstIndex(where: { $0.name == info.name }) {
-            favorite.remove(at: index)
-        } else {
-            favorite.append(info)
-            if favorite.count > 5 {
-                
-                if let name = favorite.first?.name {
-                    MarvelData.shared.checkRemoveFavorite(name: name)
-                }
-                favorite.removeFirst()
-            }
-        }
-        FavoriteData.shared.saveFavorite(favorite: favorite)
     }
 }
 
 // MARK: - SearchView
 extension SearchViewController: UISearchBarDelegate {
-    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
         guard let name = searchBar.text, name.count > 1, name != marvelData.currentHeroName else { return }
         marvelData.getMarvelInfo(name: name)
     }
@@ -130,6 +106,8 @@ extension SearchViewController: UISearchBarDelegate {
 extension SearchViewController:  UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        
+        emptyLabel.isHidden = marvelData.numberOfSections != 0
         return marvelData.numberOfSections
     }
     
@@ -142,9 +120,8 @@ extension SearchViewController:  UICollectionViewDataSource, UICollectionViewDel
     }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        let cell = collectionView.cellForItem(at: indexPath)
         marvelData.updateFavoriteState(index: indexPath.row)
-        updateFavoriteData(info: marvelData.heroInfo[indexPath.row])
+        faveData.updateFavoriteData(info: marvelData.heroInfo[indexPath.row])
     }
     
     func collectionView(_ collectionView: UICollectionView, viewForSupplementaryElementOfKind kind: String, at indexPath: IndexPath) -> UICollectionReusableView {
@@ -202,7 +179,3 @@ extension SearchViewController: UIScrollViewDelegate {
         }
     }
 }
-
-
-
-

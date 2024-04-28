@@ -11,6 +11,7 @@ import CommonCrypto
 class MarvelNet {
     var searchTask: URLSessionDataTask?
     let session = URLSession.shared
+    var searchWorkItem: DispatchWorkItem?
     var pageCount = 0
     
     // MARK: - Function
@@ -47,6 +48,7 @@ class MarvelNet {
     
     func getMarvelInfo(name: String, completion: @escaping ([IndexPath]?) -> Void) {
         searchTask?.cancel()
+        searchWorkItem?.cancel()
         
         let workItem = DispatchWorkItem {
            
@@ -85,6 +87,7 @@ class MarvelNet {
             self.searchTask?.resume()
         }
         DispatchQueue.global().asyncAfter(deadline: .now() + 0.3, execute: workItem)
+        searchWorkItem = workItem
     }
     
     func updateFavorite(displayInfo: inout [HeroDisplayInfo]) {
