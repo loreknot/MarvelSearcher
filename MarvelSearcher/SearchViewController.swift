@@ -2,7 +2,7 @@ import UIKit
 
 class SearchViewController: UIViewController {
 
-    let marvelData = MarvelData.shared
+    var marvelData = MarvelData.shared
     let faveData = FavoriteData.shared
     
     let sectionInsets = UIEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
