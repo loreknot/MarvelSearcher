@@ -24,15 +24,15 @@ class MarvelData {
         return self.heroInfo.count
     }
     
-   
-    
     // MARK: - Function
-    func getMarvelInfo(name: String) {
+    func getMarvelInfo(name: String) { 
         isLoading?(true)
         marvelNet.pageCount = 0
+        currentHeroName = name
         heroInfo.removeAll()
         
-        marvelNet.getMarvelInfo(name: name) { _ in
+        marvelNet.getMarvelInfo(name: name) { [weak self] _ in
+            guard let self = self else { return }
             self.isLoading?(false)
         }
     }
@@ -40,7 +40,8 @@ class MarvelData {
     func loadMoreMarvelInfo() {
         marvelNet.pageCount += 1
         isMoreData?(true)
-        marvelNet.getMarvelInfo(name: currentHeroName) { (indexPath) in
+        marvelNet.getMarvelInfo(name: currentHeroName) { [weak self] (indexPath) in
+            guard let self = self else { return }
             self.isMoreData?(false)
             self.newIndexPath = indexPath
         }

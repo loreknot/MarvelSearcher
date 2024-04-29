@@ -8,29 +8,68 @@
 import XCTest
 @testable import MarvelSearcher
 
-final class MarvelSearcherTests: XCTestCase {
+final class SearchViewControllerTests: XCTestCase {
+    
+    var sut: SearchViewController!
+    var mockMarvelData: MockMarvelData!
 
     override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
+        
+        let storyboard = UIStoryboard(name: "Main", bundle: nil)
+        sut = storyboard.instantiateViewController(withIdentifier: "SearchViewController") as? SearchViewController
+        
+        mockMarvelData = MockMarvelData()
+        sut.marvelData = mockMarvelData
+        
+        sut.loadViewIfNeeded()
+    
     }
-
+    
     override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
+        sut = nil
+        mockMarvelData = nil
     }
-
-    func testExample() throws {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
-        // Any test you write for XCTest can be annotated as throws and async.
-        // Mark your test throws to produce an unexpected failure when your test encounters an uncaught error.
-        // Mark your test async to allow awaiting for asynchronous code to complete. Check the results with assertions afterwards.
+    
+    
+    func testSearchBarTextChange() {
+        let searchText = "sp"
+        sut.searchBar.text = searchText
+        sut.searchBar(sut.searchBar, textDidChange: searchText)
+        XCTAssertTrue(mockMarvelData.getMarvelInfoCalled, "search text is changed")
+        
     }
-
-    func testPerformanceExample() throws {
-        // This is an example of a performance test case.
-        self.measure {
-            // Put the code you want to measure the time of here.
+    
+    func testUpdateFavoriteState() {
+        mockMarvelData.heroInfo.append(HeroDisplayInfo(name: "Iron Man", favorite: false))
+        sut.collectionView(sut.heroCollectionView, didSelectItemAt: IndexPath(row: 0, section: 0))
+        XCTAssertTrue(mockMarvelData.updateFavoriteStateCalled, "item selected")
+    }
+    
+    func testDataLoad() {
+        mockMarvelData.isLoading = { isLoading in
+            if !isLoading {
+                self.sut.heroCollectionView.reloadData()
+            }
         }
+        mockMarvelData.heroInfo = [HeroDisplayInfo(name: "Iron Man", favorite: false), HeroDisplayInfo(name: "Thor", favorite: true)]
+        mockMarvelData.isLoading?(false)
+        
+        XCTAssertEqual(sut.heroCollectionView.numberOfItems(inSection: 0), mockMarvelData.heroInfo.count, "CollectionView update")
     }
+}
 
+
+class MockMarvelData: MarvelData {
+    var getMarvelInfoCalled = false
+    var updateFavoriteStateCalled = false
+    
+    override func getMarvelInfo(name: String) {
+        getMarvelInfoCalled = true
+        super.getMarvelInfo(name: name)
+    }
+    
+    override func updateFavoriteState(index: Int) {
+        updateFavoriteStateCalled = true
+        super.updateFavoriteState(index: index)
+    }
 }
