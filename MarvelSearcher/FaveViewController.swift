@@ -55,10 +55,11 @@ extension FaveViewController:  UICollectionViewDataSource, UICollectionViewDeleg
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         let cell = collectionView.cellForItem(at: indexPath)
         
-        faveData.updateFavoriteState(index: indexPath.row) {
+        faveData.updateFavoriteState(index: indexPath.row) { [weak self] in
+            guard let self = self else { return }
             self.faveCollectionView.performBatchUpdates({
-                 collectionView.deleteItems(at: [indexPath])
-             }, completion: nil)
+                collectionView.deleteItems(at: [indexPath])
+            }, completion: nil)
         }
         
     }

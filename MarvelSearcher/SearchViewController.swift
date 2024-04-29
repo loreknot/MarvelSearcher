@@ -49,8 +49,9 @@ class SearchViewController: UIViewController {
     
     func setBinding() {
         
-        marvelData.isLoading = { (loading) in
+        marvelData.isLoading = { [weak self] (loading) in
             DispatchQueue.main.async {
+                guard let self = self else { return }
                 if loading {
                     self.activityIndicator.startAnimating()
                     self.emptyLabel.isHidden = true
@@ -65,8 +66,9 @@ class SearchViewController: UIViewController {
             }
         }
         
-        marvelData.isMoreData = { (isMoreData) in
+        marvelData.isMoreData = { [weak self] (isMoreData) in
             DispatchQueue.main.async {
+                guard let self = self else { return }
                 if isMoreData {
                     self.isLoading = true
                     self.footerActivityIndicator.startAnimating()
@@ -80,8 +82,9 @@ class SearchViewController: UIViewController {
             }
         }
         
-        marvelData.updateCellUI = { (indexPath) in
+        marvelData.updateCellUI = { [weak self] (indexPath) in
             DispatchQueue.main.async {
+                guard let self = self else { return }
                 self.heroCollectionView.reloadItems(at: [indexPath])
             }
         }

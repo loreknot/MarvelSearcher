@@ -55,7 +55,9 @@ class MarvelNet {
             let url = self.makeRequestUrl(name: name)
             guard let url = URL(string: url) else { return }
             
-            self.searchTask = self.session.dataTask(with: url) { data, response, error in
+            self.searchTask = self.session.dataTask(with: url) { [weak self] data, response, error in
+                guard let self = self else { return }
+
                 if let error = error as? URLError, error.code == .cancelled {
                     print("Request was cancelled")
                     return
